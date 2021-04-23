@@ -95,15 +95,16 @@ A <- list()
 D1 <- list()
 D2 <- list()
 
-# cand momentul de timp al venirii urmatorului client
-# este mai mic decat timpul actual, se iese.
 while (TRUE)
 {
   if (t > 8)
   {
     break
   }
+  
   # Cazul 1
+  # Soseste un client, verificam daca poate fi servit imediat sau
+  # intra in coada de asteptare
   if (t_A == min(t_A,t1,t2))
   {
     t <- t_A
@@ -111,7 +112,6 @@ while (TRUE)
     T_t <- generareTs(t)
     t_A <- T_t
     A[N_A] <- t
-    
     # daca ambele servere sunt libere clientul se duce la primul
     if (SS[1] == 0)
     {
@@ -120,7 +120,7 @@ while (TRUE)
       t1 <- t + Y1
       next
     }
-    # daca este serverul 2 este liber clientul il alege
+    # daca serverul 2 este liber clientul il alege
     if (SS[1] == 1 && SS[3] == 0)
     {
       SS[1] <- 2
@@ -141,9 +141,10 @@ while (TRUE)
     # daca ambele servere sunt ocupate atunci clientul intra in coada
     if (SS[1] > 1)
     {
-      if (SS[1] < 10) 
-          SS[1] <- SS[1] + 1
-      next
+      if (SS[1] < 10)
+        SS[1] <- SS[1] + 1
+      else
+        N_A <- N_A - 1
     }
   }
   
@@ -178,7 +179,6 @@ while (TRUE)
       SS[2] <- m + 1
       Y1 <- G1(1)
       t1 <- t + Y1
-      next
     }
   }
   
@@ -226,18 +226,18 @@ for (i in 1:length(A)) {
     timp_total[i] <- timp_total_2[i] <- (D2[[i]] - A[[i]])
 }
 
-sprintf("Timpul minim petrecut de un client in sistem este %f",min(unlist(timp_total)))
-sprintf("Timpul maxim petrecut de un client in sistem este %f",max(unlist(timp_total)))
-sprintf("Timpul mediu petrecut de un client in sistem este %f",mean(unlist(timp_total)))
+sprintf("Timpul minim petrecut de un client in sistem este %f", min(unlist(timp_total)))
+sprintf("Timpul maxim petrecut de un client in sistem este %f", max(unlist(timp_total)))
+sprintf("Timpul mediu petrecut de un client in sistem este %f", mean(unlist(timp_total)))
 
-sprintf("Timpul minim petrecut de un client in sistem pt server 1 este %f",min(unlist(timp_total_1)))
-sprintf("Timpul maxim petrecut de un client in sistem pt server 1 este %f",max(unlist(timp_total_1)))
-sprintf("Timpul mediu petrecut de un client in sistem pt server 1 este %f",mean(unlist(timp_total_1)))
+sprintf("Timpul minim petrecut de un client in sistem pt server 1 este %f", min(unlist(timp_total_1)))
+sprintf("Timpul maxim petrecut de un client in sistem pt server 1 este %f", max(unlist(timp_total_1)))
+sprintf("Timpul mediu petrecut de un client in sistem pt server 1 este %f", mean(unlist(timp_total_1)))
 
-sprintf("Timpul minim petrecut de un client in sistem pt server 2 este %f",min(unlist(timp_total_2)))
-sprintf("Timpul maxim petrecut de un client in sistem pt server 2 este %f",max(unlist(timp_total_2)))
-sprintf("Timpul mediu petrecut de un client in sistem pt server 2 este %f",mean(unlist(timp_total_2)))
+sprintf("Timpul minim petrecut de un client in sistem pt server 2 este %f", min(unlist(timp_total_2)))
+sprintf("Timpul maxim petrecut de un client in sistem pt server 2 este %f", max(unlist(timp_total_2)))
+sprintf("Timpul mediu petrecut de un client in sistem pt server 2 este %f", mean(unlist(timp_total_2)))
 
-sprintf("Numarul mediu de clienti serviti este %f",(C1+C2)/t)
-sprintf("Numarul mediu de clienti serviti de server 1 este %f",C1/t)
-sprintf("Numarul mediu de clienti serviti de server 2 este %f",C2/t)
+sprintf("Numarul mediu de clienti serviti este %f",(C1+C2)/2)
+sprintf("Numarul mediu de clienti serviti de server 1 este %f", C1/2)
+sprintf("Numarul mediu de clienti serviti de server 2 este %f", C2/2)
