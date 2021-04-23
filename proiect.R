@@ -86,10 +86,10 @@ G1 <- function(n) {
 }
 
 t <- N_A <- C1 <- C2 <- 0
-SS <- c(0,0,0)
+SS <- c(0,0,0,0)
 T0 <- generareTs(t)
 t_A <- T0
-t1 <- t2 <- Inf
+t1 <- t2 <- t_P <- Inf
 
 A <- list()
 D1 <- list()
@@ -100,6 +100,20 @@ while (TRUE)
   if (t > 8)
   {
     break
+  }
+  print(SS)
+  # Cazul 0
+  if (t_P == min(t_A,t1,t2,t_P))
+  {
+      t <- t_P
+      if (SS[1] > 1) {
+        SS[1] <- SS[1] - 1
+        N_A <- N_A - 1
+        print("A plecat")
+        print(N_A)
+      }
+      t_P <- Inf
+      next
   }
   
   # Cazul 1
@@ -112,6 +126,7 @@ while (TRUE)
     T_t <- generareTs(t)
     t_A <- T_t
     A[N_A] <- t
+    
     # daca ambele servere sunt libere clientul se duce la primul
     if (SS[1] == 0)
     {
@@ -141,9 +156,10 @@ while (TRUE)
     # daca ambele servere sunt ocupate atunci clientul intra in coada
     if (SS[1] > 1)
     {
-      if (SS[1] < 10)
+      if (SS[1] < 10) {
         SS[1] <- SS[1] + 1
-      else
+        t_P <- t + 0.1
+      } else
         N_A <- N_A - 1
     }
   }
@@ -156,6 +172,7 @@ while (TRUE)
     t <- t1
     C1 <- C1 + 1
     D1[SS[2]] <- t
+    t_P <- Inf
     
     # daca am doar un client, serverul 1 se elibereaza
     if (SS[1] == 1)
@@ -190,6 +207,7 @@ while (TRUE)
     t <- t2
     C2 <- C2+1
     D2[SS[3]] <- t
+    t_P <- Inf
     
     if (SS[1] == 1)
     {
