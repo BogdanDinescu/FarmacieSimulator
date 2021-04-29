@@ -113,6 +113,8 @@ first_to_leave <- function()
   return(0)
 }
 
+nr_clienti_inainte = 0
+
 simulare <- function(end,qlen) {
   
   t <- 0
@@ -129,6 +131,10 @@ simulare <- function(end,qlen) {
     if (t > end)
     {
       break
+    }
+    else if (t > end - 1)
+    {
+      nr_clienti_inainte <<- nrow(clienti)
     }
     # Cazul 0
     # testeaza daca cineva s-a plictisit si nu a ajuns inca la vreo casa
@@ -265,7 +271,7 @@ simulare <- function(end,qlen) {
 }
 
 clienti <- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
-simulare(8,10)
+simulare(9,10)
 
 timp_total <- list()
 timp_total_1 <- list()
@@ -299,15 +305,16 @@ sprintf("Numarul mediu de clienti serviti este %f",(C1+C2)/2)
 sprintf("Numarul mediu de clienti serviti de server 1 este %f", C1/2)
 sprintf("Numarul mediu de clienti serviti de server 2 este %f", C2/2)
 
-sprintf("Primul moment de timp cand este pierdut un client este %f",head(clienti[clienti$lost == 1,][order(clienti$p),],1)$p)
+clienti_pierduti <- subset(clienti, lost == 1)
+sprintf("Primul moment de timp cand este pierdut un client este %f",head(clienti_pierduti[order(clienti_pierduti$p),],1)$p)
 
 nr_pierduti <- nrow(clienti[clienti$lost == 1,])
 sprintf("Numarul de clienti pierduti %f",nr_pierduti)
 
-clienti <- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
-simulare(9,10)
-nr_pierduti2 <- nrow(clienti[clienti$lost == 1,])
-sprintf("Numarul de clienti castigati prin prelungirea programului cu o ora %f",nr_pierduti-nr_pierduti2)
+#clienti <- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
+#simulare(9,10)
+#nr_pierduti2 <- nrow(clienti[clienti$lost == 1,])
+sprintf("Numarul de clienti castigati prin prelungirea programului cu o ora %f",nrow(clienti) - nr_clienti_inainte)
 
 clienti <- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
 simulare(8,20)
