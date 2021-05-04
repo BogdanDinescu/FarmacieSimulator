@@ -20,6 +20,11 @@ ui <- fluidPage(
     column(3,
            sliderInput("interval_timp", "Intervalul de timp pentru medii(Cerinta 2):",min = 0, max = 24, value = c(8,16)))
   ),
+  fluidRow(
+    column(12, align="center",
+      actionButton("go", "Start")
+    )
+  ),
   mainPanel(
     textOutput("timp_petrecut_minim_global"),
     textOutput("timp_petrecut_maxim_global"),
@@ -198,10 +203,10 @@ server <- function(input, output) {
         i <- as.numeric(rownames(c_plictis))
         clienti[i,]$lost <<- 1
         nr_clienti <- nr_clienti - 1
-        print(cat("A plecat",i,nr_clienti))
+        #print(cat("A plecat",i,nr_clienti))
       }
       
-      print(cat(nr_clienti,casa1,casa2))
+      #print(cat(nr_clienti,casa1,casa2))
       # Cazul 1
       # Soseste un client, verificam daca poate fi servit imediat sau
       # intra in coada de asteptare
@@ -326,7 +331,7 @@ server <- function(input, output) {
     }
   }
   
-  observe ({
+  observeEvent(input$go, {
     # Cerinta 1
     timp_total_g_min <- list()
     timp_total_g_max <- list()
@@ -442,62 +447,20 @@ server <- function(input, output) {
     })
     
     # CERINTA 5
+    if (exists("profit_nou"))
+      profit_vechi <<- profit_nou
+    else
+      profit_vechi <<- 0
+    
+    profit_nou <<- mean(unlist(lista_profituri))
+    
     output$profit_suplimentar <- renderText({
-      paste("Castigul este ", round(mean(unlist(lista_profituri)), 2))
+      paste("Castigul mediu este ", round(profit_nou, 2),
+            "\nCastigul mediu vechi este ",round(profit_vechi,2),
+            "\nCastigul mediu suplimentar este ",round(profit_nou - profit_vechi,2))
     })
     
   })
 }
 
 shinyApp(ui = ui, server = server)
-
-clienti <- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
-simulare(0,9,10)
-
-timp_total <- list()
-timp_total_1 <- list()
-timp_total_2 <- list()
-
-for(i in 1:nrow(clienti)) {
-  if ( is.finite(clienti[i,]$d) ) {
-    if (clienti[i,]$s == 1)
-      timp_total[i] <- timp_total_1[i] <- clienti[i,]$d - clienti[i,]$a
-    if (clienti[i,]$s == 2)
-      timp_total[i] <- timp_total_2[i] <- clienti[i,]$d - clienti[i,]$a
-  }
-}
-
-sprintf("Timpul minim petrecut de un client in sistem este %f", min(unlist(timp_total)))
-sprintf("Timpul maxim petrecut de un client in sistem este %f", max(unlist(timp_total)))
-sprintf("Timpul mediu petrecut de un client in sistem este %f", mean(unlist(timp_total)))
-
-sprintf("Timpul minim petrecut de un client in sistem pt server 1 este %f", min(unlist(timp_total_1)))
-sprintf("Timpul maxim petrecut de un client in sistem pt server 1 este %f", max(unlist(timp_total_1)))
-sprintf("Timpul mediu petrecut de un client in sistem pt server 1 este %f", mean(unlist(timp_total_1)))
-
-sprintf("Timpul minim petrecut de un client in sistem pt server 2 este %f", min(unlist(timp_total_2)))
-sprintf("Timpul maxim petrecut de un client in sistem pt server 2 este %f", max(unlist(timp_total_2)))
-sprintf("Timpul mediu petrecut de un client in sistem pt server 2 este %f", mean(unlist(timp_total_2)))
-
-
-C1 <- nrow(clienti[clienti$s == 1,])
-C2 <- nrow(clienti[clienti$s == 2,])
-sprintf("Numarul mediu de clienti serviti este %f",(C1+C2)/2)
-sprintf("Numarul mediu de clienti serviti de server 1 este %f", C1/2)
-sprintf("Numarul mediu de clienti serviti de server 2 este %f", C2/2)
-
-clienti_pierduti <- subset(clienti, lost == 1)
-sprintf("Primul moment de timp cand este pierdut un client este %f",head(clienti_pierduti[order(clienti_pierduti$p),],1)$p)
-
-nr_pierduti <- nrow(clienti[clienti$lost == 1,])
-sprintf("Numarul de clienti pierduti %f",nr_pierduti)
-
-#clienti <- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
-#simulare(9,10)
-#nr_pierduti2 <- nrow(clienti[clienti$lost == 1,])
-sprintf("Numarul de clienti castigati prin prelungirea programului cu o ora %f",nrow(clienti) - nr_clienti_inainte)
-
-clienti <- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
-simulare(0,8,20)
-nr_pierduti3 <- nrow(clienti[clienti$lost == 1,])
-sprintf("Numarul de clienti castigati prin prelungirea cozi %f",nr_pierduti-nr_pierduti3)
