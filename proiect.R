@@ -32,7 +32,10 @@ ui <- fluidPage(
     textOutput("timp_petrecut_mediu_server_2"),
     textOutput("nr_cl_serv_1"),
     textOutput("nr_cl_serv_2"),
-    textOutput("nr_total_med_serviti")
+    textOutput("nr_total_med_serviti"),
+    verbatimTextOutput("primii_plecati"),
+    verbatimTextOutput("medie_clienti_pierduti"),
+    verbatimTextOutput("profit_suplimentar")
   )
 )
 
@@ -152,7 +155,23 @@ server <- function(input, output) {
     return(0)
   }
   
-  nr_clienti_inainte = 0
+  # verifica in ce interval a plecat un client si cu cat se incremnteaza profitul
+  check_interval_profit <- function(timp)
+  {
+    if (timp < 10){
+      x <- runif(1, 15, 30)
+      profit <<- profit + x
+    }
+    else if (timp >= 10 && timp <=14) {
+      x <- runif(1, 20, 60)
+      profit <<- profit + x
+    }
+    else
+    {
+      x <- runif(1, 20, 40)
+      profit <<- profit + x
+    }
+  }
   
   simulare <- function(start,end,qlen) {
     
@@ -169,11 +188,7 @@ server <- function(input, output) {
     {
       if (t > end)
       {
-        return(clienti)
-      }
-      else if (t > end - 1)
-      {
-        nr_clienti_inainte <<- nrow(clienti)
+        break
       }
       # Cazul 0
       # testeaza daca cineva s-a plictisit si nu a ajuns inca la vreo casa
@@ -244,7 +259,8 @@ server <- function(input, output) {
       if (t1 < t_A && t1 <= t2)
       {
         t <- t1
-        clienti[casa1,]$d <<- t 
+        clienti[casa1,]$d <<- t
+        check_interval_profit(t)
         
         # daca am doar un client, serverul 1 se elibereaza
         if (nr_clienti == 1)
@@ -280,6 +296,7 @@ server <- function(input, output) {
       {
         t <- t2
         clienti[casa2,]$d <<- t 
+        check_interval_profit(t)
         
         # daca am doar un client, serverul 2 se elibereaza
         if (nr_clienti == 1)
@@ -324,9 +341,16 @@ server <- function(input, output) {
     numar_clienti_serviti_server_1 <- list()
     numar_clienti_serviti_server_2 <- list()
     numar_total_clienti_serviti <- list()
+    # Cerinta 3
+    lista_primii_plecati_fiecare_simulare <- list()
+    # Cerinta 4
+    lista_nr_clienti_pierduti <- list()
+    # Cerinta 5
+    lista_profituri <- list()
     
     for (nr_s in 1:input$nr_simulari) {
       clienti <<- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
+      profit <<- 0
       simulare(input$prog[1],input$prog[2],input$qlen)
       timp_total <- list()
       timp_total_1 <- list()
@@ -354,6 +378,12 @@ server <- function(input, output) {
       numar_clienti_serviti_server_1[nr_s] <- nrow(clienti[clienti$s == 1,])
       numar_clienti_serviti_server_2[nr_s] <- nrow(clienti[clienti$s == 2,])
       numar_total_clienti_serviti[nr_s] <- nrow(clienti[clienti$a>=input$interval_timp[1] & clienti$d<=input$interval_timp[2], ])
+      
+      lista_primii_plecati_fiecare_simulare[nr_s] <- head(clienti[order(clienti$p) & clienti$lost == 1,],1)$p
+      
+      lista_nr_clienti_pierduti[nr_s] <- nrow(clienti[clienti$lost == 1,])
+      
+      lista_profituri[nr_s] <- profit
     }
     
     # Cerinta 1
@@ -400,6 +430,22 @@ server <- function(input, output) {
     output$nr_total_med_serviti <- renderText({
       paste("Numarul mediu total de clienti serviti este ", mean(unlist(numar_total_clienti_serviti)))
     })
+    
+    # Cerinta 3
+    output$primii_plecati <- renderText({
+      paste("Primul moment de timp cand este pierdut un client(pentru fiecare simulare) este", lista_primii_plecati_fiecare_simulare)
+    }, sep = "\n")
+    
+    # CERINTA 4
+    output$medie_clienti_pierduti <- renderText({
+      paste("Numarul mediu de clienti pierduti ", mean(unlist(lista_nr_clienti_pierduti)))
+    })
+    
+    # CERINTA 5
+    output$profit_suplimentar <- renderText({
+      paste("Castigul este ", round(mean(unlist(lista_profituri)), 2))
+    })
+    
   })
 }
 
