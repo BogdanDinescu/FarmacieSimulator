@@ -1,5 +1,41 @@
 library(shiny)
 
+ui <- fluidPage(
+  titlePanel("Simulator Farmacie"),
+  fluidRow(
+    column(3,
+           sliderInput("prog", "Program:",min = 0, max = 24, value = c(8,16))),
+    column(3,
+           numericInput("qlen",
+                        label = "Lungimea cozii",
+                        min = 1,
+                        step = 1,
+                        value = 10)),
+    column(3,
+           numericInput("nr_simulari",
+                        label = "Numarul de simulari",
+                        min = 1,
+                        step = 1,
+                        value = 1)),
+    column(3,
+           sliderInput("interval_timp", "Intervalul de timp pentru medii(Cerinta 2):",min = 0, max = 24, value = c(8,16)))
+  ),
+  mainPanel(
+    textOutput("timp_petrecut_minim_global"),
+    textOutput("timp_petrecut_maxim_global"),
+    textOutput("timp_petrecut_mediu_global"),
+    textOutput("timp_petrecut_minim_server_1"),
+    textOutput("timp_petrecut_maxim_server_1"),
+    textOutput("timp_petrecut_mediu_server_1"),
+    textOutput("timp_petrecut_minim_server_2"),
+    textOutput("timp_petrecut_maxim_server_2"),
+    textOutput("timp_petrecut_mediu_server_2"),
+    textOutput("nr_cl_serv_1"),
+    textOutput("nr_cl_serv_2"),
+    textOutput("nr_total_med_serviti")
+  )
+)
+
 server <- function(input, output) {
   generareTs <- function(s)
   {
@@ -274,30 +310,98 @@ server <- function(input, output) {
   }
   
   observe ({
-    clienti <<- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
-    simulare(input$prog[1],input$prog[2],input$qlen)
-    output$nr_clienti <- renderText({ 
-      paste("Număr clienti",nrow(clienti))
+    # Cerinta 1
+    timp_total_g_min <- list()
+    timp_total_g_max <- list()
+    timp_total_g_mean <- list()
+    timp_total_1_mins <- list()
+    timp_total_1_maxs <- list()
+    timp_total_1_means <- list()
+    timp_total_2_mins <- list()
+    timp_total_2_maxs <- list()
+    timp_total_2_means <- list()
+    # Cerinta 2
+    numar_clienti_serviti_server_1 <- list()
+    numar_clienti_serviti_server_2 <- list()
+    numar_total_clienti_serviti <- list()
+    
+    for (nr_s in 1:input$nr_simulari) {
+      clienti <<- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
+      simulare(input$prog[1],input$prog[2],input$qlen)
+      timp_total <- list()
+      timp_total_1 <- list()
+      timp_total_2 <- list()
+      
+      for(i in 1:nrow(clienti)) {
+        if ( is.finite(clienti[i,]$d) ) {
+          if (clienti[i,]$s == 1)
+            timp_total[i] <- timp_total_1[i] <- clienti[i,]$d - clienti[i,]$a
+          if (clienti[i,]$s == 2)
+            timp_total[i] <- timp_total_2[i] <- clienti[i,]$d - clienti[i,]$a
+        }
+      }
+      
+      timp_total_g_min <- append(timp_total_g_min, min(unlist(timp_total)))
+      timp_total_g_max <- append(timp_total_g_max, max(unlist(timp_total)))
+      timp_total_g_mean <- append(timp_total_g_mean, mean(unlist(timp_total)))
+      timp_total_1_mins <- append(timp_total_1_mins, min(unlist(timp_total_1)))
+      timp_total_1_maxs <- append(timp_total_1_maxs, max(unlist(timp_total_1)))
+      timp_total_1_means <- append(timp_total_1_means, mean(unlist(timp_total_1)))
+      timp_total_2_mins <- append(timp_total_2_mins, min(unlist(timp_total_2)))
+      timp_total_2_maxs <- append(timp_total_2_maxs, max(unlist(timp_total_2)))
+      timp_total_2_means <- append(timp_total_2_means, mean(unlist(timp_total_2)))
+      
+      numar_clienti_serviti_server_1[nr_s] <- nrow(clienti[clienti$s == 1,])
+      numar_clienti_serviti_server_2[nr_s] <- nrow(clienti[clienti$s == 2,])
+      numar_total_clienti_serviti[nr_s] <- nrow(clienti[clienti$a>=input$interval_timp[1] & clienti$d<=input$interval_timp[2], ])
+    }
+    
+    # Cerinta 1
+    # Afisarea timpului minim, maxim si mediu petrecut de clienti in farmacie,
+    # dar si pentru fiecare server in parte
+    # GLOBAL
+    output$timp_petrecut_minim_global <- renderText({
+      paste("Timpul minim petrecut de un client in sistem este ", min(unlist(timp_total_g_min)))
+    })
+    output$timp_petrecut_maxim_global <- renderText({
+      paste("Timpul maxim petrecut de un client in sistem este ", max(unlist(timp_total_g_max)))
+    })
+    output$timp_petrecut_mediu_global <- renderText({
+      paste("Timpul mediu petrecut de un client in sistem este ", mean(unlist(timp_total_g_mean)))
+    })
+    # SERVER 1
+    output$timp_petrecut_minim_server_1 <- renderText({
+      paste("Timpul minim petrecut de un client in sistem pt server 1 este ", min(unlist(timp_total_1_mins)))
+    })
+    output$timp_petrecut_maxim_server_1 <- renderText({
+      paste("Timpul maxim petrecut de un client in sistem pt server 1 este ", max(unlist(timp_total_1_maxs)))
+    })
+    output$timp_petrecut_mediu_server_1 <- renderText({
+      paste("Timpul mediu petrecut de un client in sistem pt server 1 este ", mean(unlist(timp_total_1_means)))
+    })
+    # SERVER 2
+    output$timp_petrecut_minim_server_2 <- renderText({
+      paste("Timpul minim petrecut de un client in sistem pt server 2 este ", min(unlist(timp_total_2_mins)))
+    })
+    output$timp_petrecut_maxim_server_2 <- renderText({
+      paste("Timpul maxim petrecut de un client in sistem pt server 2 este ", max(unlist(timp_total_2_maxs)))
+    })
+    output$timp_petrecut_mediu_server_2 <- renderText({
+      paste("Timpul mediu petrecut de un client in sistem pt server 2 este ", mean(unlist(timp_total_2_means)))
+    })
+    
+    # Cerinta 2
+    output$nr_cl_serv_1 <- renderText({
+      paste("Numarul mediu de clienti serviti de serverul 1 este ", mean(unlist(numar_clienti_serviti_server_1)))
+    })
+    output$nr_cl_serv_2 <- renderText({
+      paste("Numarul mediu de clienti serviti de serverul 2 este ", mean(unlist(numar_clienti_serviti_server_2)))
+    })
+    output$nr_total_med_serviti <- renderText({
+      paste("Numarul mediu total de clienti serviti este ", mean(unlist(numar_total_clienti_serviti)))
     })
   })
 }
-
-ui <- fluidPage(
-  titlePanel("Simulator Farmacie"),
-  fluidRow(
-    column(3,
-           sliderInput("prog", "Program:",min = 0, max = 24, value = c(8,16))),
-    column(3,
-           numericInput("qlen",
-                        label = "Lungimea cozii",
-                        min = 1,
-                        step = 1,
-                        value = 10)),
-  ),
-  mainPanel(
-    textOutput("nr_clienti")
-  )
-)
 
 shinyApp(ui = ui, server = server)
 
