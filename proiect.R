@@ -1,277 +1,308 @@
-generareTs <- function(s)
-{
-  t <- s
-  lambda_const <- 23
-  while (TRUE) {
-    U1 <- runif(1)
-    U2 <- runif(1)
-    t <- t - (1/lambda_const) * log(U1)
+library(shiny)
 
-    if(U2 <= lambda(t)/lambda_const)
-    {
-      return(t)
-    }
-  }
-}
-
-f_exponentiala <- function(n, lambda){
-  U <- runif(n)
-  return(-1/lambda * log(U))
-}
-
-# X~Norm(0,1), generarea a n valori dintr-o Norm(0, 1)
-f_norm_one <- function(v=1)
-{
-  while(TRUE) {
-    Y <- f_exponentiala(1, 1)
-    U_1 <- runif(1)
-    if (U_1 <= exp(-(Y-1)^2 / 2)) {
-      X_modul <- Y
-      U_2 <- runif(1)
-      
-      if (U_2 <= 1/2)
-        X <- -X_modul
-      else
-        X <- X_modul
-      
-      return(X+4)
-    }
-  }
-}
-
-G2 <- function(n)
-{
-  rez <- sapply(1:n, f_norm_one)
-  return(rez)
-}
-
-# Pois de parametru lambda
-lambda <- function(t)
-{
-  if (t >= 0 && t <= 3)
-    return (2*t^2+5)
-  if (t > 3 && t < 4)
-    return (12)
-  if (t >= 4 && t <= 5)
-    return (1/10 * exp(t) + t)
-  if (t > 5)
-    return (17)
-}
-
-pois <- function(l)
-{
-  U <- runif(1)
-  i <- 0
-  p <- exp(-l)
-  f <- p
-  while (TRUE)
+server <- function(input, output) {
+  generareTs <- function(s)
   {
-    if (U < f)
-      return (i)
-    p <- (l*p)/(i+1)
-    f <- f + p
-    i <- i + 1
+    t <- s
+    lambda_const <- 23
+    while (TRUE) {
+      U1 <- runif(1)
+      U2 <- runif(1)
+      t <- t - (1/lambda_const) * log(U1)
+      
+      if(U2 <= lambda(t)/lambda_const)
+      {
+        return(t)
+      }
+    }
   }
-}
-
-pois_N <- function(n,l)
-{
-  x <- sapply(1:n, function(x=1) {pois(l)} )
-  return(x)
-}
-
-G1 <- function(n) {
-  U <- runif(n)
-  return ( (-2+sqrt(4+60*U)) / 6 )
-}
-
-patience <- function()
-{
-  return(runif(1))
-}
-
-next_client <- function()
-{
-  n <- nrow(clienti)
-  #while(clienti[n,]$d == Inf)
-  #{
-  #  n <- n + 1
-  #}
-  return(n)
-}
-
-front_queue <- function()
-{
-  return( as.numeric(rownames(head(clienti[clienti$s==0 & clienti$d == Inf & clienti$lost == 0,],1))) )
-}
-
-first_to_leave <- function()
-{
-  x <- head(clienti[clienti$lost == 0 & clienti$s == 0,][order(clienti$p), ],1)
-  if (!is.na(x$p))
+  
+  f_exponentiala <- function(n, lambda){
+    U <- runif(n)
+    return(-1/lambda * log(U))
+  }
+  
+  # X~Norm(0,1), generarea a n valori dintr-o Norm(0, 1)
+  f_norm_one <- function(v=1)
+  {
+    while(TRUE) {
+      Y <- f_exponentiala(1, 1)
+      U_1 <- runif(1)
+      if (U_1 <= exp(-(Y-1)^2 / 2)) {
+        X_modul <- Y
+        U_2 <- runif(1)
+        
+        if (U_2 <= 1/2)
+          X <- -X_modul
+        else
+          X <- X_modul
+        
+        return(X+4)
+      }
+    }
+  }
+  
+  G2 <- function(n)
+  {
+    rez <- sapply(1:n, f_norm_one)
+    return(rez)
+  }
+  
+  # Pois de parametru lambda
+  lambda <- function(t)
+  {
+    if (t >= 0 && t <= 3)
+      return (2*t^2+5)
+    if (t > 3 && t < 4)
+      return (12)
+    if (t >= 4 && t <= 5)
+      return (1/10 * exp(t) + t)
+    if (t > 5)
+      return (17)
+  }
+  
+  pois <- function(l)
+  {
+    U <- runif(1)
+    i <- 0
+    p <- exp(-l)
+    f <- p
+    while (TRUE)
+    {
+      if (U < f)
+        return (i)
+      p <- (l*p)/(i+1)
+      f <- f + p
+      i <- i + 1
+    }
+  }
+  
+  pois_N <- function(n,l)
+  {
+    x <- sapply(1:n, function(x=1) {pois(l)} )
     return(x)
-  return(0)
-}
-
-nr_clienti_inainte = 0
-
-simulare <- function(end,qlen) {
+  }
   
-  t <- 0
-  nr_clienti <- 0
-  casa1 <- 0
-  casa2 <- 0
-  T0 <- generareTs(t)
-  t_A <- T0
-  t1 <- t2 <- Inf
-  clienti[1,] <<- c(T0,Inf,0,T0+patience(),0)
+  G1 <- function(n) {
+    U <- runif(n)
+    return ( (-2+sqrt(4+60*U)) / 6 )
+  }
   
-  while (TRUE)
+  patience <- function()
   {
-    if (t > end)
-    {
-      break
-    }
-    else if (t > end - 1)
-    {
-      nr_clienti_inainte <<- nrow(clienti)
-    }
-    # Cazul 0
-    # testeaza daca cineva s-a plictisit si nu a ajuns inca la vreo casa
-    c_plictis <- first_to_leave()
-    if (c_plictis != 0 && c_plictis$p <= min(t_A,t1,t2))
-    {
-      i <- as.numeric(rownames(c_plictis))
-      clienti[i,]$lost <<- 1
-      nr_clienti <- nr_clienti - 1
-      print(cat("A plecat",i,nr_clienti))
-    }
+    return(runif(1))
+  }
+  
+  next_client <- function()
+  {
+    n <- nrow(clienti)
+    #while(clienti[n,]$d == Inf)
+    #{
+    #  n <- n + 1
+    #}
+    return(n)
+  }
+  
+  front_queue <- function()
+  {
+    return( as.numeric(rownames(head(clienti[clienti$s==0 & clienti$d == Inf & clienti$lost == 0,],1))) )
+  }
+  
+  first_to_leave <- function()
+  {
+    x <- head(clienti[clienti$lost == 0 & clienti$s == 0,][order(clienti$p), ],1)
+    if (!is.na(x$p))
+      return(x)
+    return(0)
+  }
+  
+  nr_clienti_inainte = 0
+  
+  simulare <- function(start,end,qlen) {
     
-    print(cat(nr_clienti,casa1,casa2))
-    # Cazul 1
-    # Soseste un client, verificam daca poate fi servit imediat sau
-    # intra in coada de asteptare
-    if (t_A == min(t_A,t1,t2))
-    {
-      t <- t_A
-      N <- next_client()
-      t_A <- generareTs(t)
-      clienti[nrow(clienti)+1,] <<- c(t_A,Inf,0,p=t_A+patience(),0)
-      
-      # daca ambele servere sunt libere clientul se duce la primul
-      if (nr_clienti == 0)
-      {
-        nr_clienti <- 1
-        casa1 <- N
-        casa2 <- 0
-        t1 <- t + G1(1)
-        clienti[N,]$s <<- 1
-        next
-      }
-      # daca serverul 1 este liber clientul il alege
-      if (nr_clienti == 1 && casa1 == 0)
-      {
-        nr_clienti <- 2
-        casa1 <- N
-        t1 <- t + G1(1)
-        clienti[N,]$s <<- 1
-        next
-      }
-      # daca serverul 2 este liber clientul il alege
-      if (nr_clienti == 1 && casa2 == 0)
-      {
-        nr_clienti <- 2
-        casa2 <- N
-        t2 <- t + G2(1)
-        clienti[N,]$s <<- 2
-        next
-      }
-      # daca ambele servere sunt ocupate atunci clientul intra in coada
-      if (nr_clienti > 1)
-      {
-        if (nr_clienti < qlen) {
-          nr_clienti <- nr_clienti + 1
-        }
-        else {
-          clienti <<- clienti[-nrow(clienti),]
-        }
-        next
-      }
-    }
+    t <- start
+    nr_clienti <- 0
+    casa1 <- 0
+    casa2 <- 0
+    T0 <- generareTs(t)
+    t_A <- T0
+    t1 <- t2 <- Inf
+    clienti[1,] <<- c(T0,Inf,0,T0+patience(),0)
     
-    # Cazul 2
-    # Serverul 1 se elibereaza inainte de sosirea unui client nou
-    # si inaintea serverului 2
-    if (t1 < t_A && t1 <= t2)
+    while (TRUE)
     {
-      t <- t1
-      clienti[casa1,]$d <<- t 
-      
-      # daca am doar un client, serverul 1 se elibereaza
-      if (nr_clienti == 1)
+      if (t > end)
       {
-        nr_clienti <- 0
-        casa1 <- 0
-        casa2 <- 0
-        t1 <- Inf
-        next
+        return(clienti)
       }
-      # daca am doi clienti eliberez serverul 1
-      if (nr_clienti == 2)
+      else if (t > end - 1)
       {
-        nr_clienti <- 1
-        casa1 <- 0
-        t1 = Inf
-        next
+        nr_clienti_inainte <<- nrow(clienti)
       }
-      if (nr_clienti > 2)
+      # Cazul 0
+      # testeaza daca cineva s-a plictisit si nu a ajuns inca la vreo casa
+      c_plictis <- first_to_leave()
+      if (c_plictis != 0 && c_plictis$p <= min(t_A,t1,t2))
       {
+        i <- as.numeric(rownames(c_plictis))
+        clienti[i,]$lost <<- 1
         nr_clienti <- nr_clienti - 1
-        casa1 <- front_queue()
-        t1 <- t + G1(1)
-        clienti[casa1,]$s <<- 1
-        next
+        print(cat("A plecat",i,nr_clienti))
       }
-    }
-    
-    # Cazul 3
-    # Serverul 2 se elibereaza inaintea serverului 1
-    # si inainte de venirea unui nou cleint
-    if (t2 < t_A && t2 <= t1)
-    {
-      t <- t2
-      clienti[casa2,]$d <<- t 
       
-      # daca am doar un client, serverul 2 se elibereaza
-      if (nr_clienti == 1)
+      print(cat(nr_clienti,casa1,casa2))
+      # Cazul 1
+      # Soseste un client, verificam daca poate fi servit imediat sau
+      # intra in coada de asteptare
+      if (t_A == min(t_A,t1,t2))
       {
-        nr_clienti <- 0
-        casa1 <- 0
-        casa2 <- 0
-        t2 <- Inf
-        next
+        t <- t_A
+        N <- next_client()
+        t_A <- generareTs(t)
+        clienti[nrow(clienti)+1,] <<- c(t_A,Inf,0,p=t_A+patience(),0)
+        
+        # daca ambele servere sunt libere clientul se duce la primul
+        if (nr_clienti == 0)
+        {
+          nr_clienti <- 1
+          casa1 <- N
+          casa2 <- 0
+          t1 <- t + G1(1)
+          clienti[N,]$s <<- 1
+          next
+        }
+        # daca serverul 1 este liber clientul il alege
+        if (nr_clienti == 1 && casa1 == 0)
+        {
+          nr_clienti <- 2
+          casa1 <- N
+          t1 <- t + G1(1)
+          clienti[N,]$s <<- 1
+          next
+        }
+        # daca serverul 2 este liber clientul il alege
+        if (nr_clienti == 1 && casa2 == 0)
+        {
+          nr_clienti <- 2
+          casa2 <- N
+          t2 <- t + G2(1)
+          clienti[N,]$s <<- 2
+          next
+        }
+        # daca ambele servere sunt ocupate atunci clientul intra in coada
+        if (nr_clienti > 1)
+        {
+          if (nr_clienti < qlen) {
+            nr_clienti <- nr_clienti + 1
+          }
+          else {
+            clienti <<- clienti[-nrow(clienti),]
+          }
+          next
+        }
       }
-      # daca am doi clienti eliberez serverul 2
-      if (nr_clienti == 2)
+      
+      # Cazul 2
+      # Serverul 1 se elibereaza inainte de sosirea unui client nou
+      # si inaintea serverului 2
+      if (t1 < t_A && t1 <= t2)
       {
-        nr_clienti <- 1
-        casa2 <- 0
-        t2 = Inf
-        next
+        t <- t1
+        clienti[casa1,]$d <<- t 
+        
+        # daca am doar un client, serverul 1 se elibereaza
+        if (nr_clienti == 1)
+        {
+          nr_clienti <- 0
+          casa1 <- 0
+          casa2 <- 0
+          t1 <- Inf
+          next
+        }
+        # daca am doi clienti eliberez serverul 1
+        if (nr_clienti == 2)
+        {
+          nr_clienti <- 1
+          casa1 <- 0
+          t1 = Inf
+          next
+        }
+        if (nr_clienti > 2)
+        {
+          nr_clienti <- nr_clienti - 1
+          casa1 <- front_queue()
+          t1 <- t + G1(1)
+          clienti[casa1,]$s <<- 1
+          next
+        }
       }
-      if (nr_clienti > 2)
+      
+      # Cazul 3
+      # Serverul 2 se elibereaza inaintea serverului 1
+      # si inainte de venirea unui nou cleint
+      if (t2 < t_A && t2 <= t1)
       {
-        nr_clienti <- nr_clienti - 1
-        casa2 <- front_queue()
-        t2 <- t + G2(1)
-        clienti[casa2,]$s <<- 2
+        t <- t2
+        clienti[casa2,]$d <<- t 
+        
+        # daca am doar un client, serverul 2 se elibereaza
+        if (nr_clienti == 1)
+        {
+          nr_clienti <- 0
+          casa1 <- 0
+          casa2 <- 0
+          t2 <- Inf
+          next
+        }
+        # daca am doi clienti eliberez serverul 2
+        if (nr_clienti == 2)
+        {
+          nr_clienti <- 1
+          casa2 <- 0
+          t2 = Inf
+          next
+        }
+        if (nr_clienti > 2)
+        {
+          nr_clienti <- nr_clienti - 1
+          casa2 <- front_queue()
+          t2 <- t + G2(1)
+          clienti[casa2,]$s <<- 2
+        }
       }
     }
   }
+  
+  observe ({
+    clienti <<- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
+    simulare(input$prog[1],input$prog[2],input$qlen)
+    output$nr_clienti <- renderText({ 
+      paste("Număr clienti",nrow(clienti))
+    })
+  })
 }
+
+ui <- fluidPage(
+  titlePanel("Simulator Farmacie"),
+  fluidRow(
+    column(3,
+           sliderInput("prog", "Program:",min = 0, max = 24, value = c(8,16))),
+    column(3,
+           numericInput("qlen",
+                        label = "Lungimea cozii",
+                        min = 1,
+                        step = 1,
+                        value = 10)),
+  ),
+  mainPanel(
+    textOutput("nr_clienti")
+  )
+)
+
+shinyApp(ui = ui, server = server)
 
 clienti <- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
-simulare(9,10)
+simulare(0,9,10)
 
 timp_total <- list()
 timp_total_1 <- list()
@@ -317,6 +348,6 @@ sprintf("Numarul de clienti pierduti %f",nr_pierduti)
 sprintf("Numarul de clienti castigati prin prelungirea programului cu o ora %f",nrow(clienti) - nr_clienti_inainte)
 
 clienti <- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
-simulare(8,20)
+simulare(0,8,20)
 nr_pierduti3 <- nrow(clienti[clienti$lost == 1,])
 sprintf("Numarul de clienti castigati prin prelungirea cozi %f",nr_pierduti-nr_pierduti3)
