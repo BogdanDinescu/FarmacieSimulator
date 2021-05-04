@@ -143,18 +143,29 @@ simulare <- function(end,qlen) {
     {
       i <- as.numeric(rownames(c_plictis))
       clienti[i,]$lost <<- 1
-      #print(cat("A plecat",i))
+      print(cat("A plecat",i))
     }
     
-    #print(cat(nr_clienti,casa1,casa2))
+    print(cat(nr_clienti,casa1,casa2))
     # Cazul 1
     # Soseste un client, verificam daca poate fi servit imediat sau
     # intra in coada de asteptare
     if (t_A == min(t_A,t1,t2))
     {
+      
       t <- t_A
       N <- next_client()
       t_A <- generareTs(t)
+      # daca ambele servere sunt ocupate atunci clientul intra in coada
+      if (nr_clienti > 1)
+      {
+        if (nr_clienti < qlen) {
+          nr_clienti <- nr_clienti + 1
+        } else {
+          next
+        }
+      }
+      
       clienti[nrow(clienti)+1,] <<- c(t_A,Inf,0,p=t_A+patience(),0)
       
       # daca ambele servere sunt libere clientul se duce la primul
@@ -183,18 +194,6 @@ simulare <- function(end,qlen) {
         casa2 <- N
         t2 <- t + G2(1)
         clienti[N,]$s <<- 2
-        next
-      }
-      # daca ambele servere sunt ocupate atunci clientul intra in coada
-      if (nr_clienti > 1)
-      {
-        if (nr_clienti < qlen) {
-          nr_clienti <- nr_clienti + 1
-        }
-        #else {
-          #clienti <<- clienti[-nrow(clienti),]
-          #t_A <- generareTs(t)
-        #}
         next
       }
     }
