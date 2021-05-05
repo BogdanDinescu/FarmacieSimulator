@@ -505,7 +505,7 @@ server <- function(input, output) {
     })
     
     output$plot2 <- renderPlot({
-      plot(unlist(numar_clienti_serviti_server_1),type="l",col="blue",ylab="clienti serviti de 1", ylim = c(0, 30))
+      plot(unlist(numar_clienti_serviti_server_1),type="l",col="blue",ylab="clienti serviti de 1 si 2", ylim = c(0, 30))
       lines(unlist(numar_clienti_serviti_server_2),type="l",col="orange",ylab="clienti serviti de 2")
     })
   })
