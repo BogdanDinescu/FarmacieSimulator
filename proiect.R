@@ -18,7 +18,11 @@ ui <- fluidPage(
                         step = 1,
                         value = 1)),
     column(3,
-           sliderInput("interval_timp", "Intervalul de timp pentru medii(Cerinta 2):",min = 0, max = 24, value = c(8,16)))
+           sliderInput("interval_timp",
+                       label = "Intervalul de timp pentru medii(Cerinta 2):", 
+                       min = 0,
+                       max = 24,
+                       value = c(8,16)))
   ),
   fluidRow(
     column(12, align="center",
@@ -40,15 +44,20 @@ ui <- fluidPage(
     textOutput("nr_total_med_serviti"),
     verbatimTextOutput("primii_plecati"),
     verbatimTextOutput("medie_clienti_pierduti"),
-    verbatimTextOutput("profit_suplimentar")
+    verbatimTextOutput("profit_suplimentar"),
+    plotOutput("plot_c_serviti"),
+    plotOutput("firstPlot"),
+    plotOutput("secondPlot"),
+    plotOutput("plot2")
   )
 )
 
 server <- function(input, output) {
+  # Functia care genereaza timpul la care va sosi urmatorul client(aka algoritmul cu inimioara)
   generareTs <- function(s)
   {
     t <- s
-    lambda_const <- 23
+    lambda_const <- 23.5
     while (TRUE) {
       U1 <- runif(1)
       U2 <- runif(1)
@@ -61,12 +70,13 @@ server <- function(input, output) {
     }
   }
   
+  # Functia genereaza n variabile aleatoare repartizate exponential folosind metoda inversa(n si lambda alese la apelare)
   f_exponentiala <- function(n, lambda){
     U <- runif(n)
     return(-1/lambda * log(U))
   }
   
-  # X~Norm(0,1), generarea a n valori dintr-o Norm(0, 1)
+  # X~Norm(4,1), genereaza o variabila aleatoare repartizata Norm(4, 1)
   f_norm_one <- function(v=1)
   {
     while(TRUE) {
@@ -86,13 +96,14 @@ server <- function(input, output) {
     }
   }
   
+  # genereaza timpul necesar servirii unui client de farmacistul 2(serverul 2)
   G2 <- function(n)
   {
     rez <- sapply(1:n, f_norm_one)
     return(rez)
   }
   
-  # Pois de parametru lambda
+  # Functia de intensitate lambda(t), Pois de parametru lambda
   lambda <- function(t)
   {
     if (t >= 0 && t <= 3)
@@ -105,6 +116,7 @@ server <- function(input, output) {
       return (17)
   }
   
+  # Functia genereaza o variabila aleatoare de repartitie Poisson(lambda)
   pois <- function(l)
   {
     U <- runif(1)
@@ -121,37 +133,39 @@ server <- function(input, output) {
     }
   }
   
+  # genereaza n v.a. rep poisson
   pois_N <- function(n,l)
   {
     x <- sapply(1:n, function(x=1) {pois(l)} )
     return(x)
   }
   
+  # genereaza timpul necesar servirii unui client de farmacistul 1(serverul 1)
   G1 <- function(n) {
     U <- runif(n)
     return ( (-2+sqrt(4+60*U)) / 6 )
   }
   
+  # (Pentru Bonus)functia care genereaza cat timp are un client ramdare sa stea in coada
   patience <- function()
   {
     return(runif(1))
   }
   
+  # Furnizeaza numarul de clienti
   next_client <- function()
   {
     n <- nrow(clienti)
-    #while(clienti[n,]$d == Inf)
-    #{
-    #  n <- n + 1
-    #}
     return(n)
   }
   
+  # Returneaza urmatorul client care sta la coada(care nu a plecat si nu e servit)
   front_queue <- function()
   {
-    return( as.numeric(rownames(head(clienti[clienti$s==0 & clienti$d == Inf & clienti$lost == 0,],1))) )
+    return(as.numeric(rownames(head(clienti[clienti$s==0 & clienti$d == Inf & clienti$lost == 0,],1))))
   }
   
+  # Returneaza timpul la care urmeaza sa plece primul client
   first_to_leave <- function()
   {
     x <- head(clienti[clienti$lost == 0 & clienti$s == 0,][order(clienti$p), ],1)
@@ -160,7 +174,7 @@ server <- function(input, output) {
     return(0)
   }
   
-  # verifica in ce interval a plecat un client si cu cat se incremnteaza profitul
+  # Verifica in ce interval a plecat un client si cu cat se incremnteaza profitul
   check_interval_profit <- function(timp)
   {
     if (timp < 10){
@@ -178,16 +192,17 @@ server <- function(input, output) {
     }
   }
   
+  # Simuleaza programul farmaciei pentru o ora de deschidere si inchidere date, precum si lungimea cozii tot date
   simulare <- function(start,end,qlen) {
     
-    t <- start
+    t <- start  # timpul curent
     nr_clienti <- 0
     casa1 <- 0
     casa2 <- 0
-    T0 <- generareTs(t)
+    T0 <- generareTs(t)  # generam timpul la care va sosii primul client
     t_A <- T0
     t1 <- t2 <- Inf
-    clienti[1,] <<- c(T0,Inf,0,T0+patience(),0)
+    clienti[1,] <<- c(T0, Inf, 0, T0 + patience(), 0)
     
     while (TRUE)
     {
@@ -195,27 +210,27 @@ server <- function(input, output) {
       {
         break
       }
+      
       # Cazul 0
-      # testeaza daca cineva s-a plictisit si nu a ajuns inca la vreo casa
+      # testeaza daca cineva s-a plictisit si nu a ajuns inca la un farmacist(server) pentru a fi servit
       c_plictis <- first_to_leave()
-      if (c_plictis != 0 && c_plictis$p <= min(t_A,t1,t2))
+      if (c_plictis != 0 && c_plictis$p <= min(t_A, t1, t2))
       {
         i <- as.numeric(rownames(c_plictis))
         clienti[i,]$lost <<- 1
         nr_clienti <- nr_clienti - 1
-        #print(cat("A plecat",i,nr_clienti))
       }
       
-      #print(cat(nr_clienti,casa1,casa2))
       # Cazul 1
       # Soseste un client, verificam daca poate fi servit imediat sau
       # intra in coada de asteptare
-      if (t_A == min(t_A,t1,t2))
+      if (t_A == min(t_A, t1, t2))
       {
         t <- t_A
         N <- next_client()
         t_A <- generareTs(t)
-        clienti[nrow(clienti)+1,] <<- c(t_A,Inf,0,p=t_A+patience(),0)
+        clienti[nrow(clienti) + 1,] <<- c(t_A, Inf, 0, p = t_A + patience(), 0)
+        flag <- 0
         
         # daca ambele servere sunt libere clientul se duce la primul
         if (nr_clienti == 0)
@@ -225,28 +240,28 @@ server <- function(input, output) {
           casa2 <- 0
           t1 <- t + G1(1)
           clienti[N,]$s <<- 1
-          next
+          flag <- 1
         }
         # daca serverul 1 este liber clientul il alege
-        if (nr_clienti == 1 && casa1 == 0)
+        if (nr_clienti == 1 && casa1 == 0 && flag == 0)
         {
           nr_clienti <- 2
           casa1 <- N
           t1 <- t + G1(1)
           clienti[N,]$s <<- 1
-          next
+          flag <- 1
         }
         # daca serverul 2 este liber clientul il alege
-        if (nr_clienti == 1 && casa2 == 0)
+        if (nr_clienti == 1 && casa2 == 0 && flag == 0)
         {
           nr_clienti <- 2
           casa2 <- N
           t2 <- t + G2(1)
           clienti[N,]$s <<- 2
-          next
+          flag <- 1
         }
         # daca ambele servere sunt ocupate atunci clientul intra in coada
-        if (nr_clienti > 1)
+        if (nr_clienti > 1 && flag == 0)
         {
           if (nr_clienti < qlen) {
             nr_clienti <- nr_clienti + 1
@@ -254,7 +269,7 @@ server <- function(input, output) {
           else {
             clienti <<- clienti[-nrow(clienti),]
           }
-          next
+          flag <- 1
         }
       }
       
@@ -266,31 +281,32 @@ server <- function(input, output) {
         t <- t1
         clienti[casa1,]$d <<- t
         check_interval_profit(t)
+        flag2 <- 0
         
         # daca am doar un client, serverul 1 se elibereaza
-        if (nr_clienti == 1)
+        if (nr_clienti == 1 && flag2 == 0)
         {
           nr_clienti <- 0
           casa1 <- 0
           casa2 <- 0
           t1 <- Inf
-          next
+          flag2 <- 1
         }
         # daca am doi clienti eliberez serverul 1
-        if (nr_clienti == 2)
+        if (nr_clienti == 2 && flag2 == 0)
         {
           nr_clienti <- 1
           casa1 <- 0
           t1 = Inf
-          next
+          flag2 <- 1
         }
-        if (nr_clienti > 2)
+        if (nr_clienti > 2 && flag2 == 0)
         {
           nr_clienti <- nr_clienti - 1
           casa1 <- front_queue()
           t1 <- t + G1(1)
           clienti[casa1,]$s <<- 1
-          next
+          flag2 <- 1
         }
       }
       
@@ -302,37 +318,39 @@ server <- function(input, output) {
         t <- t2
         clienti[casa2,]$d <<- t 
         check_interval_profit(t)
+        flag3 <- 0
         
         # daca am doar un client, serverul 2 se elibereaza
-        if (nr_clienti == 1)
+        if (nr_clienti == 1 && flag3 == 0)
         {
           nr_clienti <- 0
           casa1 <- 0
           casa2 <- 0
           t2 <- Inf
-          next
+          flag3 <- 1
         }
         # daca am doi clienti eliberez serverul 2
-        if (nr_clienti == 2)
+        if (nr_clienti == 2 && flag3 == 0)
         {
           nr_clienti <- 1
           casa2 <- 0
           t2 = Inf
-          next
+          flag3 <- 1
         }
-        if (nr_clienti > 2)
+        if (nr_clienti > 2  && flag3 == 0)
         {
           nr_clienti <- nr_clienti - 1
           casa2 <- front_queue()
           t2 <- t + G2(1)
           clienti[casa2,]$s <<- 2
+          flag3 <- 1
         }
       }
     }
   }
   
   observeEvent(input$go, {
-    # Cerinta 1
+    # CERINTA 1
     timp_total_g_min <- list()
     timp_total_g_max <- list()
     timp_total_g_mean <- list()
@@ -342,16 +360,20 @@ server <- function(input, output) {
     timp_total_2_mins <- list()
     timp_total_2_maxs <- list()
     timp_total_2_means <- list()
-    # Cerinta 2
+    # CERINTA 2
     numar_clienti_serviti_server_1 <- list()
     numar_clienti_serviti_server_2 <- list()
     numar_total_clienti_serviti <- list()
     # Cerinta 3
     lista_primii_plecati_fiecare_simulare <- list()
-    # Cerinta 4
+    # CERINTA 4
     lista_nr_clienti_pierduti <- list()
-    # Cerinta 5
+    # CERINTA 5
     lista_profituri <- list()
+    # GRAFICE
+    clienti_serviti <- list()
+    timp_sosire_clienti_serviti <- list()
+    timp_sosire_clienti_plecati <- list()
     
     for (nr_s in 1:input$nr_simulari) {
       clienti <<- data.frame(a=numeric(),d=numeric(),s=numeric(),p=numeric(),lost=numeric())
@@ -389,12 +411,17 @@ server <- function(input, output) {
       lista_nr_clienti_pierduti[nr_s] <- nrow(clienti[clienti$lost == 1,])
       
       lista_profituri[nr_s] <- profit
+      
+      clienti_serviti[nr_s] <- nrow(clienti[clienti$d != Inf,])
+      
+      timp_sosire_clienti_serviti <- append(timp_sosire_clienti_serviti, clienti[clienti$lost==0 & clienti$d<Inf,]$a)
+      timp_sosire_clienti_plecati <- append(timp_sosire_clienti_plecati, clienti[clienti$lost==1 | clienti$d==Inf,]$a)
     }
     
     # Cerinta 1
     # Afisarea timpului minim, maxim si mediu petrecut de clienti in farmacie,
     # dar si pentru fiecare server in parte
-    # GLOBAL
+    # Global
     output$timp_petrecut_minim_global <- renderText({
       paste("Timpul minim petrecut de un client in sistem este ", min(unlist(timp_total_g_min)))
     })
@@ -404,7 +431,7 @@ server <- function(input, output) {
     output$timp_petrecut_mediu_global <- renderText({
       paste("Timpul mediu petrecut de un client in sistem este ", mean(unlist(timp_total_g_mean)))
     })
-    # SERVER 1
+    # Server 1
     output$timp_petrecut_minim_server_1 <- renderText({
       paste("Timpul minim petrecut de un client in sistem pt server 1 este ", min(unlist(timp_total_1_mins)))
     })
@@ -414,7 +441,7 @@ server <- function(input, output) {
     output$timp_petrecut_mediu_server_1 <- renderText({
       paste("Timpul mediu petrecut de un client in sistem pt server 1 este ", mean(unlist(timp_total_1_means)))
     })
-    # SERVER 2
+    # Server 2
     output$timp_petrecut_minim_server_2 <- renderText({
       paste("Timpul minim petrecut de un client in sistem pt server 2 este ", min(unlist(timp_total_2_mins)))
     })
@@ -425,7 +452,7 @@ server <- function(input, output) {
       paste("Timpul mediu petrecut de un client in sistem pt server 2 este ", mean(unlist(timp_total_2_means)))
     })
     
-    # Cerinta 2
+    # CERINTA 2
     output$nr_cl_serv_1 <- renderText({
       paste("Numarul mediu de clienti serviti de serverul 1 este ", mean(unlist(numar_clienti_serviti_server_1)))
     })
@@ -436,7 +463,7 @@ server <- function(input, output) {
       paste("Numarul mediu total de clienti serviti este ", mean(unlist(numar_total_clienti_serviti)))
     })
     
-    # Cerinta 3
+    # CERINTA 3
     output$primii_plecati <- renderText({
       paste("Primul moment de timp cand este pierdut un client(pentru fiecare simulare) este", lista_primii_plecati_fiecare_simulare)
     }, sep = "\n")
@@ -460,6 +487,27 @@ server <- function(input, output) {
             "\nCastigul mediu suplimentar este ",round(profit_nou - profit_vechi,2))
     })
     
+    # GRAFICE
+    output$plot_c_serviti <- renderPlot({
+      plot(1:input$nr_simulari, clienti_serviti, type = 'l', xlab = "Indicele simularii", ylab ="Numarul de clienti serviti", col = 'green', border = 'white')
+      title("Numarul de clienti serviti pentru fiecare simulare")
+    })
+    
+    output$firstPlot <- renderPlot({
+      plot(1:input$nr_simulari, lista_nr_clienti_pierduti, type = 'l', xlab = "Indicele simularii", ylab ="Numarul de clienti pierduti", col = 'red', border = 'white')
+      title("Numarul de clienti pierduti pentru fiecare simulare")
+    })
+    
+    output$secondPlot <- renderPlot({
+      par(mfrow=c(1,2))
+      hist(unlist(timp_sosire_clienti_serviti),type="p", xlab = "", col="green", main = "Clienti serviti cu succes")
+      hist(unlist(timp_sosire_clienti_plecati),type="p", xlab = "", col="red", main = "Clienti plecati")
+    })
+    
+    output$plot2 <- renderPlot({
+      plot(unlist(numar_clienti_serviti_server_1),type="l",col="blue",ylab="clienti serviti de 1", ylim = c(0, 30))
+      lines(unlist(numar_clienti_serviti_server_2),type="l",col="orange",ylab="clienti serviti de 2")
+    })
   })
 }
 
