@@ -96,7 +96,7 @@ server <- function(input, output) {
     }
   }
   
-  # genereaza timpul necesar servirii unui client de farmacistul 2(serverul 2)
+  # genereaza timpul necesar servirii unui client de farmacistul 2(serverul 2) daca n = 1
   G2 <- function(n)
   {
     rez <- sapply(1:n, f_norm_one)
@@ -143,7 +143,7 @@ server <- function(input, output) {
   # genereaza timpul necesar servirii unui client de farmacistul 1(serverul 1)
   G1 <- function(n) {
     U <- runif(n)
-    return ( (-2+sqrt(4+60*U)) / 6 )
+    return ((-2+sqrt(4+60*U)) / 6 )
   }
   
   # (Pentru Bonus)functia care genereaza cat timp are un client ramdare sa stea in coada
@@ -192,7 +192,7 @@ server <- function(input, output) {
     }
   }
   
-  # Simuleaza programul farmaciei pentru o ora de deschidere si inchidere date, precum si lungimea cozii tot date
+  # Simuleaza programul farmaciei pentru o ora de deschidere si inchidere date, precum si lungimea cozii tot data
   simulare <- function(start,end,qlen) {
     
     t <- start  # timpul curent
