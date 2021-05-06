@@ -1,6 +1,6 @@
 # Simulator al activității unei farmacii
 
 # Echipa
-Sandu Alexandru-Cristian
-Dinescu Bogdan-George
+Sandu Alexandru-Cristian <br />
+Dinescu Bogdan-George <br />
 Masgras Vlad-Florian
